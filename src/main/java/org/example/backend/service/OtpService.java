@@ -1,7 +1,7 @@
 package org.example.backend.service;
 
-import org.example.backend.exception.BadRequestException;
-import org.example.backend.exception.RequestTooSoonException;
+import org.example.backend.exception.CustomBadRequestException;
+import org.example.backend.exception.CustomRequestTooSoonException;
 import org.example.backend.model.Otp;
 import org.example.backend.model.User;
 import org.example.backend.repository.IAuthRepository;
@@ -35,13 +35,17 @@ public class OtpService implements IOtpService {
     @Autowired
     private IAuthRepository authRepository;
 
+    @Override
+    public Optional<Otp> findByUserEmail(String email) {
+        return otpRepository.findByUserEmail(email);
+    }
 
     public String generateOtp(User user) {
         Optional<Otp> optionalOtp = otpRepository.findByUserEmail(user.getEmail());
         if (optionalOtp.isPresent()) {
             Otp existingOtp = optionalOtp.get();
             if (Duration.between(existingOtp.getCreatedAt(), LocalDateTime.now()).toSeconds() < 60) {
-                throw new RequestTooSoonException("otp", "Bạn chỉ có thể gửi lại OTP sau 60 giây.");
+                throw new CustomRequestTooSoonException("otp", "Bạn chỉ có thể gửi lại OTP sau 60 giây.");
             }
             otpRepository.delete(existingOtp);
         }
@@ -69,21 +73,21 @@ public class OtpService implements IOtpService {
     public boolean verifyOtp(String email, String rawOtp) {
         Optional<User> optionalUser = authRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
-            throw new BadRequestException("email", "Email không tồn tại!");
+            throw new CustomBadRequestException("email", "Email không tồn tại!");
         }
 
         User user = optionalUser.get();
 
         Optional<Otp> optionalOtp = otpRepository.findByUserEmail(email);
         if (optionalOtp.isEmpty()) {
-            throw new BadRequestException("otp", "OTP không tồn tại, vui lòng yêu cầu mã mới.");
+            throw new CustomBadRequestException("otp", "OTP không tồn tại, vui lòng yêu cầu mã mới.");
         }
 
         Otp otpToken = optionalOtp.get();
 
         if (otpToken.getExpiryTime().isBefore(LocalDateTime.now())) {
             otpRepository.delete(otpToken);
-            throw new BadRequestException("otp", "OTP đã hết hạn, vui lòng yêu cầu mã mới.");
+            throw new CustomBadRequestException("otp", "OTP đã hết hạn, vui lòng yêu cầu mã mới.");
         }
 
         if (passwordEncoder.matches(rawOtp, otpToken.getOtpToken())) {
@@ -97,16 +101,11 @@ public class OtpService implements IOtpService {
 
             if (attempts >= 3) {
                 otpRepository.delete(otpToken);
-                throw new BadRequestException("otp", "Bạn đã nhập sai quá 3 lần. Hãy yêu cầu OTP mới.");
+                throw new CustomBadRequestException("otp", "Bạn đã nhập sai quá 3 lần. Hãy yêu cầu OTP mới.");
             } else {
                 otpRepository.save(otpToken);
-                throw new BadRequestException("otp", "OTP không đúng. Bạn còn " + (3 - attempts) + " lần thử.");
+                throw new CustomBadRequestException("otp", "OTP không đúng. Bạn còn " + (3 - attempts) + " lần thử.");
             }
         }
-    }
-
-    @Override
-    public Optional<Otp> findByUserEmail(String email) {
-        return otpRepository.findByUserEmail(email);
     }
 }
