@@ -1,8 +1,8 @@
 package org.example.backend.exception;
 
-public class NotFoundException extends RuntimeException{
+public class CustomAccountLockedException extends RuntimeException{
     private String field;
-    public NotFoundException(String field, String message){
+    public CustomAccountLockedException(String field, String message){
         super(message);
         this.field=field;
     }

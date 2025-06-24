@@ -1,8 +1,8 @@
 package org.example.backend.exception;
 
-public class BadRequestException extends RuntimeException{
+public class CustomRequestTooSoonException extends RuntimeException{
     private String field;
-    public BadRequestException(String field, String message){
+    public CustomRequestTooSoonException(String field, String message){
         super(message);
         this.field=field;
     }
