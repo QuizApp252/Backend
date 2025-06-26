@@ -90,15 +90,8 @@ public class AuthController {
                     .collect(Collectors.toList());
             return ResponseEntity.badRequest().body(new ApiResponseDto(HttpStatus.BAD_REQUEST, "Lỗi xác thực dữ liệu!", errors));
         }
-        try {
-            String token = authService.login(loginDto);
-            return ResponseEntity.ok(new ApiResponseDto(HttpStatus.OK, "Đăng nhập thành công!", Map.of("token", token)));
-        } catch (Exception ex) {
-            // Bạn có thể thêm logger tại đây nếu muốn log lỗi
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponseDto(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng!", null));
-        }
+        String token = authService.login(loginDto);
+        return ResponseEntity.ok(new ApiResponseDto(HttpStatus.OK, "Đăng nhập thành công!", Map.of("token", token)));
     }
 
     @GetMapping("/oauth2/success")

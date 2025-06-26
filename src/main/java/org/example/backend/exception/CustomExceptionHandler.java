@@ -72,7 +72,7 @@ public class CustomExceptionHandler {
         String path = req.getDescription(false); // ví dụ: uri=/api/v1/user/register
         // Ghi log chi tiết
         logger.warn("Lỗi tại {}: {}", path, ex.getMessage(), ex);
-        return new ApiResponseDto(HttpStatus.UNAUTHORIZED, "Tài khoản bị khóa hoặc chưa được kích hoạt!", errors);
+        return new ApiResponseDto(HttpStatus.UNAUTHORIZED, ex.getMessage(), errors);
     }
     @ExceptionHandler(CustomDeletedAccountException.class)
     @ResponseStatus(HttpStatus.GONE)
