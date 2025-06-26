@@ -30,6 +30,11 @@ public class CustomUserDetail implements UserDetailsService {
         if (user.isDelete()) {
             throw new CustomDeletedAccountException("isDelete", "Tài khoản đã bị khóa do vi phạm!");
         }
+        String password = user.getPassword();
+        if (password == null || password.isBlank()) {
+            // Gán mật khẩu giả nếu là user đăng nhập bằng Google
+            password = "oauth2_placeholder";
+        }
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
