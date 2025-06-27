@@ -2,7 +2,6 @@ package org.example.backend.controller;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-
 import jakarta.validation.Valid;
 import org.example.backend.dto.ApiResponseDto;
 import org.example.backend.dto.ChangePasswordDto;
@@ -21,8 +20,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +34,7 @@ public class UserController {
     private IAuthService authService;
     @Autowired
     private Cloudinary cloudinary;
+
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile() {
         try {
@@ -76,9 +74,9 @@ public class UserController {
         profileDto.setPhoneNumber(user.getPhoneNumber());
         return profileDto;
     }
+
     @PostMapping("/profile/update")
-    public ResponseEntity<?> updateProfile(@Valid @ModelAttribute UserUpdateDto dto,
-                                           BindingResult bindingResult) {
+    public ResponseEntity<?> updateProfile(@Valid @ModelAttribute UserUpdateDto dto, BindingResult bindingResult) {
         // Xử lý lỗi validate
         if (bindingResult.hasErrors()) {
             List<Map<String, String>> errors = bindingResult.getFieldErrors().stream()
@@ -100,15 +98,7 @@ public class UserController {
             // Cập nhật các trường
             if (dto.getName() != null) user.setName(dto.getName());
             if (dto.getPhoneNumber() != null) user.setPhoneNumber(dto.getPhoneNumber());
-
-            if (dto.getDateOfBirth() != null && !dto.getDateOfBirth().isBlank()) {
-                try {
-                    user.setDateOfBirth(LocalDate.parse(dto.getDateOfBirth())); // yyyy-MM-dd
-                } catch (DateTimeParseException e) {
-                    return ResponseEntity.badRequest()
-                            .body(new ApiResponseDto(HttpStatus.BAD_REQUEST, "Ngày sinh không hợp lệ", null));
-                }
-            }
+            if (dto.getDateOfBirth() != null) user.setDateOfBirth(dto.getDateOfBirth()); // Sử dụng trực tiếp LocalDate
 
             // Upload avatar nếu có file
             if (dto.getAvatar() != null && !dto.getAvatar().isEmpty()) {
@@ -127,9 +117,9 @@ public class UserController {
                     .body(new ApiResponseDto(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi khi cập nhật thông tin", null));
         }
     }
+
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordDto dto,
-                                            BindingResult bindingResult) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordDto dto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             List<Map<String, String>> errors = bindingResult.getFieldErrors().stream()
                     .map(error -> Map.of("field", error.getField(), "message", error.getDefaultMessage()))

@@ -7,10 +7,17 @@ import org.example.backend.model.User;
 import java.util.Optional;
 
 public interface IAuthService {
+    void save(User user);
+
     void register(RegisterDto request);
+
     Optional<User> findByEmail(String email);
+
     String login(LoginDto loginDto);
+
     User handleGoogleLogin(String email, String name);
+
     boolean checkPassword(String rawPassword, String encodedPassword);
+
     String encodePassword(String password);
 }

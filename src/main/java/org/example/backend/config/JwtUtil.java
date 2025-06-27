@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.apache.coyote.BadRequestException;
 import org.example.backend.exception.CustomBadRequestException;
 import org.example.backend.model.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +15,6 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 @Component
 public class JwtUtil {
@@ -71,6 +69,7 @@ public class JwtUtil {
     public boolean isTokenExpired(String token) {
         return extractClaims(token).getExpiration().before(new Date());
     }
+
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String email = getEmailFromToken(token);
         return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));

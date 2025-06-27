@@ -2,12 +2,11 @@ package org.example.backend.service;
 
 import org.example.backend.exception.CustomBadRequestException;
 import org.example.backend.exception.CustomRequestTooSoonException;
-import org.example.backend.model.Otp;
 import org.example.backend.model.User;
 import org.example.backend.repository.IAuthRepository;
-import org.example.backend.repository.IOtpRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,16 +14,12 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
 public class OtpService implements IOtpService {
     @Value("${spring.mail.username}")
     private String fromEmail;
-
-    @Autowired
-    private IOtpRepository otpRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -35,28 +30,26 @@ public class OtpService implements IOtpService {
     @Autowired
     private IAuthRepository authRepository;
 
-    @Override
-    public Optional<Otp> findByUserEmail(String email) {
-        return otpRepository.findByUserEmail(email);
-    }
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    private static final String OTP_PREFIX = "OTP:"; // Key prefix trong Redis
+    private static final String FAIL_PREFIX = "OTP_FAIL:"; // Key prefix trong Redis
 
     public String generateOtp(User user) {
-        Optional<Otp> optionalOtp = otpRepository.findByUserEmail(user.getEmail());
-        if (optionalOtp.isPresent()) {
-            Otp existingOtp = optionalOtp.get();
-            if (Duration.between(existingOtp.getCreatedAt(), LocalDateTime.now()).toSeconds() < 60) {
+        String email = user.getEmail();
+        String redisKey = OTP_PREFIX + email;
+        String rateLimitKey = "rateLimit:" + email;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(rateLimitKey))) {
                 throw new CustomRequestTooSoonException("otp", "Bạn chỉ có thể gửi lại OTP sau 60 giây.");
             }
-            otpRepository.delete(existingOtp);
+            redisTemplate.delete(redisKey);
         }
-        SecureRandom random = new SecureRandom();
-        String otp = String.format("%06d", random.nextInt(1000000));
-        Otp otpToken = new Otp();
-        otpToken.setOtpToken(passwordEncoder.encode(otp));
-        otpToken.setUser(user);
-        otpToken.setExpiryTime(LocalDateTime.now().plusMinutes(5));
-        otpRepository.save(otpToken);
-        return otp;
+        String rawOtp = String.format("%06d", new SecureRandom().nextInt(999999));
+        redisTemplate.opsForValue().set(redisKey, rawOtp, Duration.ofMinutes(5));
+        redisTemplate.opsForValue().set(rateLimitKey, "1", Duration.ofMinutes(1));
+        return rawOtp;
     }
 
     @Override
@@ -71,41 +64,30 @@ public class OtpService implements IOtpService {
 
     @Override
     public boolean verifyOtp(String email, String rawOtp) {
+        String redisKey = OTP_PREFIX + email;
+        String savedOtp = redisTemplate.opsForValue().get(redisKey);
+        String failKey = FAIL_PREFIX + email;
+
+        if (savedOtp == null) {
+            throw new CustomBadRequestException("otp", "OTP không tồn tại hoặc đã hết hạn.");
+        }
         Optional<User> optionalUser = authRepository.findByEmail(email);
-        if (optionalUser.isEmpty()) {
-            throw new CustomBadRequestException("email", "Email không tồn tại!");
-        }
-
-        User user = optionalUser.get();
-
-        Optional<Otp> optionalOtp = otpRepository.findByUserEmail(email);
-        if (optionalOtp.isEmpty()) {
-            throw new CustomBadRequestException("otp", "OTP không tồn tại, vui lòng yêu cầu mã mới.");
-        }
-
-        Otp otpToken = optionalOtp.get();
-
-        if (otpToken.getExpiryTime().isBefore(LocalDateTime.now())) {
-            otpRepository.delete(otpToken);
-            throw new CustomBadRequestException("otp", "OTP đã hết hạn, vui lòng yêu cầu mã mới.");
-        }
-
-        if (passwordEncoder.matches(rawOtp, otpToken.getOtpToken())) {
-            user.setStatus(true);
-            authRepository.save(user);
-            otpRepository.delete(otpToken);
+        if (savedOtp.equals(rawOtp)) {
+            optionalUser.get().setStatus(true);
+            authRepository.save(optionalUser.get());
+            redisTemplate.delete(redisKey); // Xóa sau khi dùng
+            redisTemplate.delete(failKey);
             return true;
         } else {
-            int attempts = otpToken.getAttempts() + 1;
-            otpToken.setAttempts(attempts);
-
-            if (attempts >= 3) {
-                otpRepository.delete(otpToken);
-                throw new CustomBadRequestException("otp", "Bạn đã nhập sai quá 3 lần. Hãy yêu cầu OTP mới.");
-            } else {
-                otpRepository.save(otpToken);
-                throw new CustomBadRequestException("otp", "OTP không đúng. Bạn còn " + (3 - attempts) + " lần thử.");
+            Long attempts = redisTemplate.opsForValue().increment(failKey);
+            redisTemplate.expire(failKey, Duration.ofMinutes(5));
+            if (attempts != null && attempts >= 3) {
+                redisTemplate.delete(redisKey);
+                redisTemplate.delete(failKey);
+                throw new CustomBadRequestException("otp", "Bạn đã nhập sai quá 3 lần. Hãy yêu cầu mã OTP mới.");
             }
+
+            throw new CustomBadRequestException("otp", "OTP không đúng. Bạn còn " + (3 - attempts) + " lần thử.");
         }
     }
 }

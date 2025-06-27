@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import org.example.backend.config.JwtUtil;
 import org.example.backend.dto.*;
+import org.example.backend.exception.CustomBadRequestException;
 import org.example.backend.exception.CustomNotFoundException;
 import org.example.backend.model.User;
 import org.example.backend.service.IAuthService;
@@ -107,5 +108,32 @@ public class AuthController {
     public ResponseEntity<?> oauth2Failure() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiResponseDto(HttpStatus.BAD_REQUEST, "Đăng nhập Google thất bại!", null));
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ResendOtpDto request) {
+        Optional<User> optionalUser = authService.findByEmail(request.getEmail());
+        if (optionalUser.isEmpty()) {
+            throw new CustomNotFoundException("email", "Email chưa được đăng ký!");
+        }
+        String otp = otpService.generateOtp(optionalUser.get());
+        otpService.sendOtpToEmail(request.getEmail(), otp);
+        return ResponseEntity.ok(new ApiResponseDto(HttpStatus.OK, "OTP đã được gửi đến email!", null));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordDto request) {
+        boolean isValid = otpService.verifyOtp(request.getEmail(), request.getOtp());
+        if (!isValid) {
+            throw new CustomBadRequestException("otp", "OTP không hợp lệ hoặc đã hết hạn!");
+        }
+        Optional<User> optionalUser = authService.findByEmail(request.getEmail());
+        if (optionalUser.isEmpty()) {
+            throw new CustomNotFoundException("email", "Không tìm thấy người dùng!");
+        }
+        User user = optionalUser.get();
+        user.setPassword(authService.encodePassword(request.getNewPassword()));
+        user.setStatus(true); // đảm bảo tài khoản đã kích hoạt
+        authService.save(user);
+        return ResponseEntity.ok(new ApiResponseDto(HttpStatus.OK, "Đặt lại mật khẩu thành công!", null));
     }
 }

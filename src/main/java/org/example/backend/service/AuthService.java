@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-public class AuthService implements IAuthService{
+public class AuthService implements IAuthService {
     @Autowired
     private IAuthRepository authRepository;
 
@@ -34,13 +34,19 @@ public class AuthService implements IAuthService{
     public Optional<User> findByEmail(String email) {
         return authRepository.findByEmail(email);
     }
+
     @Override
-    public void register(RegisterDto request){
-        if(authRepository.existsByEmail(request.getEmail())){
-            throw new CustomConflictException("email","Email đã được sử dụng!");
+    public void save(User user) {
+        authRepository.save(user);
+    }
+
+    @Override
+    public void register(RegisterDto request) {
+        if (authRepository.existsByEmail(request.getEmail())) {
+            throw new CustomConflictException("email", "Email đã được sử dụng!");
         }
-        if(!request.getPassword().equals(request.getPasswordConfirm())){
-            throw new CustomBadRequestException("passwordConfirm","Mật khẩu không khớp!");
+        if (!request.getPassword().equals(request.getPasswordConfirm())) {
+            throw new CustomBadRequestException("passwordConfirm", "Mật khẩu không khớp!");
         }
         User user = new User();
         user.setEmail(request.getEmail());
@@ -48,6 +54,7 @@ public class AuthService implements IAuthService{
         user.setName(request.getName());
         authRepository.save(user);
     }
+
     @Override
     public String login(LoginDto loginDto) {
         try {
@@ -64,6 +71,7 @@ public class AuthService implements IAuthService{
             throw new CustomDeletedAccountException("isDelete", "Tài khoản đã bị khóa!");
         }
     }
+
     @Override
     public User handleGoogleLogin(String email, String name) {
         Optional<User> optionalUser = authRepository.findByEmail(email);
