@@ -63,6 +63,7 @@ public class CustomExceptionHandler {
         logger.warn("Lỗi tại {}: {}", path, ex.getMessage(), ex);
         return new ApiResponseDto(HttpStatus.NOT_FOUND, "Không tìm thấy dữ liệu!", errors);
     }
+
     @ExceptionHandler(CustomAccountLockedException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponseDto handleCustomAccountLockedException(CustomAccountLockedException ex, WebRequest req) {
@@ -74,6 +75,7 @@ public class CustomExceptionHandler {
         logger.warn("Lỗi tại {}: {}", path, ex.getMessage(), ex);
         return new ApiResponseDto(HttpStatus.UNAUTHORIZED, ex.getMessage(), errors);
     }
+
     @ExceptionHandler(CustomDeletedAccountException.class)
     @ResponseStatus(HttpStatus.GONE)
     public ApiResponseDto handleCustomDeletedAccountException(CustomDeletedAccountException ex, WebRequest req) {

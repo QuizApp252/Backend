@@ -33,11 +33,11 @@ public class CustomUserDetail implements UserDetailsService {
         String password = user.getPassword();
         if (password == null || password.isBlank()) {
             // Gán mật khẩu giả nếu là user đăng nhập bằng Google
-            password = "oauth2_placeholder";
+            password = "Oauth2_placeholder";
         }
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                user.getPassword(),
+                password,
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
         );
     }

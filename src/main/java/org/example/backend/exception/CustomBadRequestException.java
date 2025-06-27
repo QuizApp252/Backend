@@ -1,12 +1,12 @@
 package org.example.backend.exception;
 
+import lombok.Getter;
+
+@Getter
 public class CustomBadRequestException extends RuntimeException{
-    private String field;
+    private final String field;
     public CustomBadRequestException(String field, String message){
         super(message);
         this.field=field;
-    }
-    public String getField() {
-        return field;
     }
 }
