@@ -45,6 +45,8 @@ dependencies {
 	implementation 'com.cloudinary:cloudinary-http44:1.29.0'
 
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	implementation 'org.apache.poi:poi-ooxml:5.2.5'
 }
 
 tasks.named('test') {
